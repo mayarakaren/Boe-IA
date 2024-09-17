@@ -92,7 +92,7 @@ cnn = build_cnn(input_shape=(64, 64, 3))  # Imagens 64x64 com 3 canais (RGB)
 final_model = combine_models(cnn)
 
 # Treinamento
-history = final_model.fit(train_generator, epochs=10, validation_data=test_generator)
+history = final_model.fit(train_generator, epochs=100, validation_data=test_generator)
 
 # Avaliação do modelo
 test_loss, test_acc = final_model.evaluate(test_generator)
