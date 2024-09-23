@@ -4,8 +4,8 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import numpy as np
 
 # Caminhos das pastas de treino e teste
-train_base_dir = 'imagetrain'  
-test_base_dir = 'image/test'    
+train_base_dir = 'image/train/train'  
+test_base_dir = 'image/test/test'    
 
 # Gerador de dados para as imagens de treino e teste
 train_datagen = ImageDataGenerator(rescale=1./255)
