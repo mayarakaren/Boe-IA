@@ -2,6 +2,15 @@ import tensorflow as tf
 from tensorflow.keras import layers, models
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import numpy as np
+import csv
+import os
+
+# Função para salvar as métricas das últimas 5 épocas
+def salvar_metricas_ultimas_epocas(history, num_epocas=5):
+    ultimas_epocas = {}
+    for metric in history.history:
+        ultimas_epocas[metric] = history.history[metric][-num_epocas:]
+    return ultimas_epocas
 
 # Caminhos das pastas de treino e teste
 train_base_dir = 'image/train/train'  
@@ -22,7 +31,8 @@ test_generator = test_datagen.flow_from_directory(
     test_base_dir,
     target_size=(64, 64),
     batch_size=32,
-    class_mode='categorical'
+    class_mode='categorical',
+    shuffle=False  # Importante para garantir que as previsões sejam na mesma ordem dos rótulos
 )
 
 # Função para aplicar limiarização (binarização)
@@ -94,9 +104,43 @@ final_model = combine_models(cnn)
 # Treinamento
 history = final_model.fit(train_generator, epochs=100, validation_data=test_generator)
 
+# Salvar métricas das 5 últimas épocas
+metricas_finais = salvar_metricas_ultimas_epocas(history)
+print("Métricas das últimas 5 épocas:", metricas_finais)
+
 # Avaliação do modelo
 test_loss, test_acc = final_model.evaluate(test_generator)
 print(f"Acurácia do Teste: {test_acc * 100:.2f}%")
+
+# Testar com 5 imagens de cada classe e salvar resultados no CSV
+test_images, test_labels = next(test_generator)  # Pega um lote de imagens
+test_images = test_images[:5]  # Pegue as primeiras 5 imagens
+
+# Salvar previsões e informações em um CSV
+with open('metricas_finais.csv', mode='w') as file:
+    writer = csv.writer(file)
+    
+    # Salvar métricas gerais das últimas 5 épocas
+    writer.writerow(metricas_finais.keys())  # Cabeçalhos
+    writer.writerows(zip(*metricas_finais.values()))  # Valores
+    
+    # Cabeçalhos para as previsões
+    writer.writerow(['Imagem', 'Classe Verdadeira', 'Classe Prevista', 'Acurácia'])
+    
+    # Para cada imagem, fazer a previsão e salvar a informação
+    for i, img in enumerate(test_images):
+        pred = final_model.predict(np.expand_dims(img, axis=0))
+        pred_class = np.argmax(pred)  # Classe prevista
+        true_class = np.argmax(test_labels[i])  # Classe verdadeira
+        
+        # Calcular se a previsão foi correta
+        acuracia = 1 if pred_class == true_class else 0
+        
+        # Nome do arquivo da imagem (opcional, depende do gerador)
+        img_name = os.path.basename(test_generator.filenames[i])
+        
+        # Salvar nome da imagem, classe verdadeira, classe prevista e acurácia
+        writer.writerow([img_name, true_class, pred_class, acuracia])
 
 # Salvar o modelo
 model_save_path = 'bovino_classification_model.h5'
