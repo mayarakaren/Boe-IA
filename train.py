@@ -118,8 +118,8 @@ print(f"Acurácia do Teste: {test_acc * 100:.2f}%")
 
 # Seleção de 5 imagens de cada classe (adição solicitada)
 berne_indices = [i for i, label in enumerate(test_generator.labels) if label == class_indices['berne']][:5]
-dermatite_indices = [i for i, label in enumerate(test_generator.labels) if label == class_indices['dermatite_nodular']][:5]
-saudavel_indices = [i for i, label in enumerate(test_generator.labels) if label == class_indices['saudável']][:5]
+dermatite_indices = [i for i, label in enumerate(test_generator.labels) if label == class_indices['dermatite']][:5]
+saudavel_indices = [i for i, label in enumerate(test_generator.labels) if label == class_indices['saudavel']][:5]
 
 selected_indices = berne_indices + dermatite_indices + saudavel_indices
 
