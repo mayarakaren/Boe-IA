@@ -47,25 +47,25 @@ def crop_and_roi(x):
 
 # CNN Model
 def build_cnn(input_shape):
-    model = models.Sequential()
+    inputs = layers.Input(shape=input_shape)
     
     # Primeira camada com operação de CROP e limiarização
-    model.add(layers.Lambda(crop_and_roi, input_shape=input_shape))  # Aplica CROP e ROI
-    model.add(layers.Lambda(thresholding))  # Aplica Limiarização
+    x = layers.Lambda(crop_and_roi)(inputs)  # Aplica CROP e ROI
+    x = layers.Lambda(thresholding)(x)  # Aplica Limiarização
     
     # Camadas de convolução e pooling
-    model.add(layers.Conv2D(32, (3, 3), activation='relu'))
-    model.add(layers.MaxPooling2D((2, 2)))
+    x = layers.Conv2D(32, (3, 3), activation='relu')(x)
+    x = layers.MaxPooling2D((2, 2))(x)
     
-    model.add(layers.Conv2D(64, (3, 3), activation='relu'))
-    model.add(layers.MaxPooling2D((2, 2)))
+    x = layers.Conv2D(64, (3, 3), activation='relu')(x)
+    x = layers.MaxPooling2D((2, 2))(x)
     
-    model.add(layers.Conv2D(128, (3, 3), activation='relu'))
-    model.add(layers.MaxPooling2D((2, 2)))
+    x = layers.Conv2D(128, (3, 3), activation='relu')(x)
+    x = layers.MaxPooling2D((2, 2))(x)
     
-    model.add(layers.Flatten())  # Achata para alimentar o MLP
+    x = layers.Flatten()(x)  # Achata para alimentar o MLP
     
-    return model
+    return models.Model(inputs=inputs, outputs=x)
 
 # MLP Model
 def build_mlp():
