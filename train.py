@@ -35,6 +35,10 @@ test_generator = test_datagen.flow_from_directory(
     shuffle=False  # Importante para garantir que as previsões sejam na mesma ordem dos rótulos
 )
 
+# Imprimir o mapeamento de classes (adição solicitada)
+class_indices = train_generator.class_indices
+print("Mapeamento de classes:", class_indices)
+
 # Função para aplicar limiarização (binarização)
 def thresholding(x, threshold=0.5):
     return tf.where(x > threshold, 1.0, 0.0)
@@ -112,9 +116,12 @@ print("Métricas das últimas 5 épocas:", metricas_finais)
 test_loss, test_acc = final_model.evaluate(test_generator)
 print(f"Acurácia do Teste: {test_acc * 100:.2f}%")
 
-# Testar com 5 imagens de cada classe e salvar resultados no CSV
-test_images, test_labels = next(test_generator)  # Pega um lote de imagens
-test_images = test_images[:5]  # Pegue as primeiras 5 imagens
+# Seleção de 5 imagens de cada classe (adição solicitada)
+berne_indices = [i for i, label in enumerate(test_generator.labels) if label == class_indices['berne']][:5]
+dermatite_indices = [i for i, label in enumerate(test_generator.labels) if label == class_indices['dermatite_nodular']][:5]
+saudavel_indices = [i for i, label in enumerate(test_generator.labels) if label == class_indices['saudável']][:5]
+
+selected_indices = berne_indices + dermatite_indices + saudavel_indices
 
 # Salvar previsões e informações em um CSV
 with open('metricas_finais.csv', mode='w') as file:
@@ -125,22 +132,27 @@ with open('metricas_finais.csv', mode='w') as file:
     writer.writerows(zip(*metricas_finais.values()))  # Valores
     
     # Cabeçalhos para as previsões
-    writer.writerow(['Imagem', 'Classe Verdadeira', 'Classe Prevista', 'Acurácia'])
+    writer.writerow(['Imagem', 'Classe Verdadeira', 'Classe Prevista', 'Acurácia (%)'])
     
     # Para cada imagem, fazer a previsão e salvar a informação
-    for i, img in enumerate(test_images):
+    for idx in selected_indices:
+        img = test_generator[idx][0]  # Obter imagem
+        true_label_idx = test_generator.labels[idx]  # Classe verdadeira (como índice numérico)
+        
+        # Fazer a previsão
         pred = final_model.predict(np.expand_dims(img, axis=0))
-        pred_class = np.argmax(pred)  # Classe prevista
-        true_class = np.argmax(test_labels[i])  # Classe verdadeira
+        pred_class_idx = np.argmax(pred)  # Classe prevista (como índice numérico)
+        pred_confidence = np.max(pred) * 100  # Confiança da previsão em porcentagem
         
-        # Calcular se a previsão foi correta
-        acuracia = 1 if pred_class == true_class else 0
+        # Converter os índices das classes para nomes
+        true_class = list(class_indices.keys())[list(class_indices.values()).index(true_label_idx)]
+        pred_class = list(class_indices.keys())[list(class_indices.values()).index(pred_class_idx)]
         
-        # Nome do arquivo da imagem (opcional, depende do gerador)
-        img_name = os.path.basename(test_generator.filenames[i])
+        # Nome do arquivo da imagem
+        img_name = os.path.basename(test_generator.filenames[idx])
         
-        # Salvar nome da imagem, classe verdadeira, classe prevista e acurácia
-        writer.writerow([img_name, true_class, pred_class, acuracia])
+        # Salvar nome da imagem, classe verdadeira, classe prevista e confiança em porcentagem
+        writer.writerow([img_name, true_class, pred_class, f"{pred_confidence:.2f}%"])
 
 # Salvar o modelo
 model_save_path = 'bovino_classification_model.h5'
