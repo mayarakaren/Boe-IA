@@ -116,7 +116,7 @@ print("Métricas das últimas 5 épocas:", metricas_finais)
 test_loss, test_acc = final_model.evaluate(test_generator)
 print(f"Acurácia do Teste: {test_acc * 100:.2f}%")
 
-# Seleção de 5 imagens de cada classe (adição solicitada)
+# Seleção de 5 imagens de cada classe
 berne_indices = [i for i, label in enumerate(test_generator.labels) if label == class_indices['berne']][:5]
 dermatite_indices = [i for i, label in enumerate(test_generator.labels) if label == class_indices['dermatite']][:5]
 saudavel_indices = [i for i, label in enumerate(test_generator.labels) if label == class_indices['saudavel']][:5]
@@ -124,7 +124,7 @@ saudavel_indices = [i for i, label in enumerate(test_generator.labels) if label 
 selected_indices = berne_indices + dermatite_indices + saudavel_indices
 
 # Salvar previsões e informações em um CSV
-with open('metricas_finais.csv', mode='w') as file:
+with open('metricas_finais.csv', mode='w', newline='', encoding='utf-8') as file:
     writer = csv.writer(file)
     
     # Salvar métricas gerais das últimas 5 épocas
@@ -136,7 +136,7 @@ with open('metricas_finais.csv', mode='w') as file:
     
     # Para cada imagem, fazer a previsão e salvar a informação
     for idx in selected_indices:
-        img = test_generator[idx][0]  # Obter imagem
+        img = test_generator[0][0][idx]  # Obter uma única imagem do lote
         true_label_idx = test_generator.labels[idx]  # Classe verdadeira (como índice numérico)
         
         # Fazer a previsão
