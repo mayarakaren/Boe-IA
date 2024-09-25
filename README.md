@@ -61,7 +61,7 @@ O script `holdout.py` é responsável por organizar as imagens em diretórios de
    Execute o script `holdout.py` para dividir as imagens em conjuntos de treino e teste:
 
    ```bash
-   python holdout_split.py
+   python holdout.py
    ```
 
    Isso criará as pastas `train` e `test` dentro da pasta `image` com as subpastas para cada classe.
