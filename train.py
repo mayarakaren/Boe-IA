@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras import layers, models, regularizers
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 import numpy as np
 import csv
 import os
@@ -15,17 +15,17 @@ def salvar_metricas_ultimas_epocas(history, num_epocas=5):
     return ultimas_epocas
 
 # Caminhos das pastas de treino e teste
-train_base_dir = 'image/train/train'  
-test_base_dir = 'image/test/test'    
+train_base_dir = 'image/train/train'
+test_base_dir = 'image/test/test'
 
 # Gerador de dados com data augmentation para prevenir overfitting no treino
 train_datagen = ImageDataGenerator(
     rescale=1./255,
-    rotation_range=20,
-    width_shift_range=0.2,
-    height_shift_range=0.2,
-    shear_range=0.2,
-    zoom_range=0.2,
+    rotation_range=30,
+    width_shift_range=0.3,
+    height_shift_range=0.3,
+    shear_range=0.3,
+    zoom_range=0.3,
     horizontal_flip=True,
     fill_mode='nearest'
 )
@@ -36,7 +36,7 @@ test_datagen = ImageDataGenerator(rescale=1./255)
 # Gerador de dados para o conjunto de treino
 train_generator = train_datagen.flow_from_directory(
     train_base_dir,
-    target_size=(64, 64),  # Redimensiona as imagens para 64x64 pixels
+    target_size=(64, 64),
     batch_size=32,
     class_mode='categorical'
 )
@@ -47,7 +47,7 @@ test_generator = test_datagen.flow_from_directory(
     target_size=(64, 64),
     batch_size=32,
     class_mode='categorical',
-    shuffle=False  # Importante para garantir que as previsões estejam na ordem correta
+    shuffle=False
 )
 
 # Exibe o mapeamento das classes
@@ -71,34 +71,33 @@ def build_cnn(input_shape):
     inputs = layers.Input(shape=input_shape)
     
     # Primeira camada aplica recorte e limiarização
-    x = layers.Lambda(crop_and_roi)(inputs)  # Aplica CROP
-    x = layers.Lambda(thresholding)(x)  # Aplica Limiarização
+    x = layers.Lambda(crop_and_roi)(inputs)
+    x = layers.Lambda(thresholding)(x)
     
     # Camadas convolucionais com regularização L2 para evitar overfitting
     x = layers.Conv2D(32, (3, 3), activation='relu', kernel_regularizer=regularizers.l2(0.001))(x)
     x = layers.MaxPooling2D((2, 2))(x)
-    x = layers.Dropout(0.25)(x)  # Dropout para evitar overfitting
+    x = layers.Dropout(0.25)(x)
     
     x = layers.Conv2D(64, (3, 3), activation='relu', kernel_regularizer=regularizers.l2(0.001))(x)
     x = layers.MaxPooling2D((2, 2))(x)
-    x = layers.Dropout(0.25)(x)  # Dropout adicional
+    x = layers.Dropout(0.25)(x)
     
     x = layers.Conv2D(128, (3, 3), activation='relu', kernel_regularizer=regularizers.l2(0.001))(x)
     x = layers.MaxPooling2D((2, 2))(x)
-    x = layers.Dropout(0.25)(x)  # Mais dropout
+    x = layers.Dropout(0.25)(x)
     
-    # Achata a saída da CNN para alimentar a parte MLP
     x = layers.Flatten()(x)
     
     return models.Model(inputs=inputs, outputs=x)
 
-# Função para construir a parte MLP (Perceptron Multicamadas) do modelo
+# Função para construir a parte MLP do modelo
 def build_mlp():
     """Constrói a parte do modelo correspondente ao MLP para classificação."""
     model = models.Sequential()
-    model.add(layers.Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.001)))  # L2 Regularization
-    model.add(layers.Dropout(0.5))  # Dropout adicional no MLP
-    model.add(layers.Dense(3, activation='softmax'))  # 3 classes de saída
+    model.add(layers.Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.001)))
+    model.add(layers.Dropout(0.5))
+    model.add(layers.Dense(3, activation='softmax'))
     
     return model
 
@@ -118,8 +117,8 @@ def sort_predictions(predictions):
 def combine_models(cnn_model):
     """Combina a parte CNN com o MLP em um modelo completo."""
     x = layers.Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.001))(cnn_model.output)
-    x = layers.Dropout(0.5)(x)  # Dropout na camada combinada
-    output = layers.Dense(3, activation='softmax')(x)  # Saída com 3 classes
+    x = layers.Dropout(0.5)(x)
+    output = layers.Dense(3, activation='softmax')(x)
     
     final_model = models.Model(inputs=cnn_model.input, outputs=output)
     final_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
@@ -127,7 +126,7 @@ def combine_models(cnn_model):
     return final_model
 
 # Construção do modelo CNN
-cnn = build_cnn(input_shape=(64, 64, 3))  # Imagens 64x64 com 3 canais (RGB)
+cnn = build_cnn(input_shape=(64, 64, 3))
 
 # Combina a CNN com o MLP
 final_model = combine_models(cnn)
@@ -135,8 +134,17 @@ final_model = combine_models(cnn)
 # Configuração do Early Stopping para interromper o treino caso a validação pare de melhorar
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
 
-# Treinamento do modelo com Early Stopping
-history = final_model.fit(train_generator, epochs=100, validation_data=test_generator, callbacks=[early_stopping])
+# Redução da taxa de aprendizado caso o modelo pare de melhorar
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=0.0001)
+
+# Configuração para salvar o melhor modelo em um arquivo .h5
+checkpoint = ModelCheckpoint('modelo_melhor_val_loss.h5', monitor='val_loss', save_best_only=True, mode='min')
+
+# Treinamento do modelo com Early Stopping, ModelCheckpoint e redução de learning rate
+history = final_model.fit(train_generator, 
+                          epochs=100, 
+                          validation_data=test_generator, 
+                          callbacks=[early_stopping, reduce_lr, checkpoint])
 
 # Salvar as métricas das últimas 5 épocas de treino
 metricas_finais = salvar_metricas_ultimas_epocas(history)
