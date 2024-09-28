@@ -158,33 +158,38 @@ selected_indices = berne_indices + dermatite_indices + saudavel_indices
 # Salvar previsões e métricas em um CSV
 with open('metricas_finais.csv', mode='w', newline='', encoding='utf-8') as file:
     writer = csv.writer(file)
-    
+
     # Salva as métricas das últimas épocas
     writer.writerow(metricas_finais.keys())  # Cabeçalhos das métricas
     writer.writerows(zip(*metricas_finais.values()))  # Valores das métricas
-    
+
     # Cabeçalhos para as previsões
     writer.writerow(['Imagem', 'Classe Verdadeira', 'Classe Prevista', 'Acurácia (%)'])
-    
+
     # Para cada imagem selecionada, salvar previsões
     for idx in selected_indices:
-        img, label = test_generator[idx]  # Obtem uma imagem específica
-        true_label_idx = test_generator.labels[idx]  # Classe verdadeira (índice numérico)
-        
-        # Fazer a previsão
-        pred = final_model.predict(np.expand_dims(img, axis=0))
-        pred_class_idx = np.argmax(pred)  # Classe prevista (índice numérico)
-        pred_confidence = np.max(pred) * 100  # Confiança da previsão
-        
-        # Converter os índices numéricos para os nomes das classes
-        true_class = list(class_indices.keys())[list(class_indices.values()).index(true_label_idx)]
-        pred_class = list(class_indices.keys())[list(class_indices.values()).index(pred_class_idx)]
-        
-        # Nome do arquivo da imagem
-        img_name = os.path.basename(test_generator.filenames[idx])
-        
-        # Escreve os dados no CSV
-        writer.writerow([img_name, true_class, pred_class, f"{pred_confidence:.2f}"])
+        # Obter o lote de imagens e suas respectivas classes
+        images, labels = test_generator.next()  # Obtém um lote de imagens e rótulos
+
+        # Verifica se o índice está dentro dos limites do lote
+        if idx < len(labels):
+            img = images[idx]  # Obtém a imagem específica do lote
+            true_label_idx = labels[idx]  # Classe verdadeira (índice numérico)
+
+            # Fazer a previsão
+            pred = final_model.predict(np.expand_dims(img, axis=0))
+            pred_class_idx = np.argmax(pred)  # Classe prevista (índice numérico)
+            pred_confidence = np.max(pred) * 100  # Confiança da previsão
+
+            # Converter os índices numéricos para os nomes das classes
+            true_class = list(class_indices.keys())[list(class_indices.values()).index(true_label_idx)]
+            pred_class = list(class_indices.keys())[list(class_indices.values()).index(pred_class_idx)]
+
+            # Nome do arquivo da imagem
+            img_name = os.path.basename(test_generator.filenames[idx])
+
+            # Escreve os dados no CSV
+            writer.writerow([img_name, true_class, pred_class, f"{pred_confidence:.2f}"])
 
 print("O melhor modelo foi salvo em 'bovino_classification_model.h5'")
 
