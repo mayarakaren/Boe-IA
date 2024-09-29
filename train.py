@@ -160,8 +160,13 @@ with open('metricas_finais.csv', mode='w', newline='', encoding='utf-8') as file
     writer = csv.writer(file)
     
     # Salva as métricas das últimas épocas
+    writer.writerow(["Métricas das últimas épocas:"])
     writer.writerow(metricas_finais.keys())  # Cabeçalhos das métricas
     writer.writerows(zip(*metricas_finais.values()))  # Valores das métricas
+    
+    # Linha em branco para separar seções
+    writer.writerow([])
+    writer.writerow(["Previsões das imagens selecionadas:"])
     
     # Cabeçalhos para as previsões
     writer.writerow(['Imagem', 'Classe Verdadeira', 'Classe Prevista', 'Acurácia (%)'])
@@ -185,6 +190,7 @@ with open('metricas_finais.csv', mode='w', newline='', encoding='utf-8') as file
 
         # Escreve os dados no CSV
         writer.writerow([img_name, true_class, pred_class, f"{pred_confidence:.2f}%"])
+
 
 print("O melhor modelo foi salvo em 'bovino_classification_model.h5'")
 
